@@ -1,0 +1,124 @@
+import numpy as np
+import pandas as pd
+import os
+import itertools
+import nltk
+nltk.download('stopwords')
+from nltk.corpus import stopwords
+import re
+import os
+%matplotlib inline
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+from sklearn.preprocessing import LabelBinarizer, LabelEncoder
+from sklearn.metrics import confusion_matrix
+from tensorflow import keras
+layers = keras.layers
+models = keras.models
+
+# Data Pre-processing and cleaning
+
+data=pd.read_csv("train_data.csv",encoding = 'unicode_escape')
+train_cat = data['category']
+train_text = data['text']
+
+REPLACE_BY_SPACE_RE = re.compile('[/(){}\[\]\|@,;]')
+BAD_SYMBOLS_RE = re.compile('[^0-9a-z #+_]')
+STOPWORDS = set(stopwords.words('english'))
+
+def clean_text(text):
+    """
+        text: a string
+        
+        return: modified initial string
+    """
+    text = text.lower() # lowercase text
+    text = REPLACE_BY_SPACE_RE.sub(' ', text) # replace REPLACE_BY_SPACE_RE symbols by space in text
+    text = BAD_SYMBOLS_RE.sub('', text) # delete symbols which are in BAD_SYMBOLS_RE from text
+    text = ' '.join(word for word in text.split() if word not in STOPWORDS) # delete stopwors from text
+    return text
+train_text = train_text.apply(clean_text)
+
+#Tokenizing
+
+max_words =3000
+tokenize = keras.preprocessing.text.Tokenizer(num_words=max_words, 
+                                              char_level=False)
+tokenize.fit_on_texts(train_text) # fit tokenizer to our training text data
+x_train = tokenize.texts_to_matrix(train_text)
+
+encoder = LabelEncoder()
+encoder.fit(train_cat)
+y_train = encoder.transform(train_cat)
+num_classes = np.max(y_train) + 1
+y_train = keras.utils.to_categorical(y_train, num_classes)
+
+# Hyperparameters
+
+batch_size = 256
+epochs = 16
+drop_ratio = 0.15
+
+#Defining the model
+
+model = models.Sequential()
+model.add(layers.Dense(512, input_shape=(max_words,)))
+model.add(layers.Activation('relu'))
+model.add(layers.Dropout(drop_ratio))
+model.add(layers.Dense(num_classes))
+model.add(layers.Activation('softmax'))
+
+model.compile(loss='categorical_crossentropy',
+              optimizer='adam',
+              metrics=['accuracy'])
+
+#Training the model
+
+history = model.fit(x_train, y_train,
+                    batch_size=batch_size,
+                    epochs=epochs,
+                    verbose=1,
+                    validation_split=0.1)
+
+#Prediction
+
+text = pd.Series(unknown_text)
+text = text.apply(clean_text)
+enc_text = tokenize.texts_to_matrix(text)
+text_labels = encoder.classes_
+prediction = model.predict(np.array([enc_text[-1,:]]))
+predicted_label = text_labels[np.argmax(prediction)]
+print("Predicted label: " + predicted_label + "\n")
+
+#Optional code for tuning hyperparameters, note: additional test data required.
+
+def run_experiment(batch_size, epochs, drop_ratio):
+  print('batch size: {}, epochs: {}, drop_ratio: {}'.format(
+      batch_size, epochs, drop_ratio))
+  model = models.Sequential()
+  model.add(layers.Dense(512, input_shape=(max_words,)))
+  model.add(layers.Activation('relu'))
+  model.add(layers.Dropout(drop_ratio))
+  model.add(layers.Dense(num_classes))
+  model.add(layers.Activation('softmax'))
+
+  model.compile(loss='categorical_crossentropy',
+                optimizer='adam',
+                metrics=['accuracy'])
+  history = model.fit(x_train, y_train,
+                    batch_size=batch_size,
+                    epochs=epochs,
+                    verbose=0,
+                    validation_split=0.1)
+  score = model.evaluate(x_test, y_test,
+                       batch_size=batch_size, verbose=0)
+
+for batch_size in range(10,31,10):
+  for epochs in range(3,15,5):
+    for drop_ratio in np.linspace(0.1, 0.5, 3):
+      run_experiment(batch_size, epochs, drop_ratio)
+
+
+
